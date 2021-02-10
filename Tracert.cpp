@@ -25,5 +25,6 @@ int main(int argc, char* argv[])
     }
     string ending_adr = argv[1];
     cout << ending_adr;
-
+    
 }
+
