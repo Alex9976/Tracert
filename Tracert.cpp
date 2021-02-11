@@ -38,15 +38,18 @@ unsigned short checksum(unsigned short* addr, int count);
 
 unsigned int analyze(char* data, SOCKADDR_IN* adr);
 
+bool show_name = false;
+
 int main(int argc, char* argv[])
-{
-    /*if (argc != 2)
-    {
-        cout << "Parameters passed incorrectly\n";
-        return 1;
-    }
+{   
+ /*   if (argc == 3 && strcmp(argv[2], "-n") == 0)
+        show_name = true;
+    else
+        show_name = false;
+    
     char ending_adr[] = argv[1];
-    cout << ending_adr;*/
+*/
+    
     char ending_adr[] = "142.250.75.14";
     char* local_adr;
 
@@ -87,25 +90,40 @@ int main(int argc, char* argv[])
     out_.sin_family = AF_INET;
 
     unsigned int control = list_adr.sin_addr.S_un.S_addr;
+    SOCKADDR_IN buf_ = { 0 };
+    int error_count = 0;
 
     cout << "Route to " << ending_adr << " with 30 hops\n";
     for (int i = 1; i <= 30; i++)
     {
-        setsockopt(listn, IPPROTO_IP, IP_TTL, (char*)&i, 4);
-        int bytes = sendto(listn, (char*)Packet, size, 0, (sockaddr*)&list_adr, sizeof(list_adr));
-        Sleep(1000);
-
-        if (recvfrom(listn, buf, 256, 0, (sockaddr*)&out_, &outlent) == SOCKET_ERROR)
-        {
-            if (WSAGetLastError() == WSAETIMEDOUT)
-            {
-                cout << "Request timeout\n";
-                continue;
-            }
-        }
         cout.width(5);
         cout << left << i;
-        if (analyze(buf, &out_) == control)
+        error_count = 0;
+        for (int j = 1; j <= 3; j++)
+        {
+            setsockopt(listn, IPPROTO_IP, IP_TTL, (char*)&i, 4);
+            int bytes = sendto(listn, (char*)Packet, size, 0, (sockaddr*)&list_adr, sizeof(list_adr));
+
+            if (recvfrom(listn, buf, 256, 0, (sockaddr*)&out_, &outlent) == SOCKET_ERROR)
+            {
+                if (WSAGetLastError() == WSAETIMEDOUT)
+                {
+                    cout.width(5);
+                    cout << "*";
+                    error_count++;
+                    continue;
+                }   
+            }
+            else
+                buf_ = out_;
+            cout << "+ ";
+        }
+        if (error_count == 3)
+        {
+            cout << endl;
+            continue;
+        }
+        if (analyze(buf, &buf_) == control)
             break;
         memset(buf, 0, 0);
     }
@@ -137,11 +155,24 @@ unsigned int analyze(char* data, SOCKADDR_IN* adr)
 {
     char* ip;
     IpHeader* packet = (IpHeader*)data;
-
     ip = inet_ntoa(adr->sin_addr);
 
-    cout.width(20);
-    cout << left << ip << "\n";
+    if (show_name)
+    {
+        char name[NI_MAXHOST] = { 0 };
+        char servInfo[NI_MAXSERV] = { 0 };
+
+        getnameinfo((struct sockaddr*)adr, sizeof(struct sockaddr), name, NI_MAXHOST, servInfo, NI_MAXSERV, NI_NUMERICSERV);
+        
+
+        if (strcmp(ip, name) == 0)
+            cout << ip << "\n";
+        else
+            cout << name << " [" << ip << "]" << "\n";
+    }
+    else
+        cout << ip << "\n";
+
     return packet->source;
 
 }
