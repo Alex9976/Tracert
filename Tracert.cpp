@@ -5,6 +5,7 @@
 #include <Ws2ipdef.h>
 #include <windows.h>
 #include <iostream>
+#include <sysinfoapi.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -92,6 +93,8 @@ int main(int argc, char* argv[])
     unsigned int control = list_adr.sin_addr.S_un.S_addr;
     SOCKADDR_IN buf_ = { 0 };
     int error_count = 0;
+    int error;
+    ULONGLONG time_start, time_end, delta;
 
     cout << "Route to " << ending_adr << " with 30 hops\n";
     for (int i = 1; i <= 30; i++)
@@ -101,28 +104,40 @@ int main(int argc, char* argv[])
         error_count = 0;
         for (int j = 1; j <= 3; j++)
         {
+            
             setsockopt(listn, IPPROTO_IP, IP_TTL, (char*)&i, 4);
-            int bytes = sendto(listn, (char*)Packet, size, 0, (sockaddr*)&list_adr, sizeof(list_adr));
 
-            if (recvfrom(listn, buf, 256, 0, (sockaddr*)&out_, &outlent) == SOCKET_ERROR)
+            time_start = GetTickCount64();
+            sendto(listn, (char*)Packet, size, 0, (sockaddr*)&list_adr, sizeof(list_adr));
+
+            error = recvfrom(listn, buf, 256, 0, (sockaddr*)&out_, &outlent);
+            time_end = GetTickCount64();
+
+            if (error == SOCKET_ERROR)
             {
                 if (WSAGetLastError() == WSAETIMEDOUT)
                 {
-                    cout.width(5);
-                    cout << "*";
+                    cout.width(10);
+                    cout << right << "*" << "   ";
                     error_count++;
                     continue;
                 }   
             }
             else
                 buf_ = out_;
-            cout << "+ ";
+            cout.width(10);
+            delta = time_end - time_start;
+            if (delta == 0)
+                cout << right << "< 1" << " ms";
+            else
+                cout << right << delta << " ms";
         }
         if (error_count == 3)
         {
             cout << endl;
             continue;
         }
+        cout << "   ";
         if (analyze(buf, &buf_) == control)
             break;
         memset(buf, 0, 0);
@@ -156,7 +171,6 @@ unsigned int analyze(char* data, SOCKADDR_IN* adr)
     char* ip;
     IpHeader* packet = (IpHeader*)data;
     ip = inet_ntoa(adr->sin_addr);
-
     if (show_name)
     {
         char name[NI_MAXHOST] = { 0 };
@@ -174,5 +188,4 @@ unsigned int analyze(char* data, SOCKADDR_IN* adr)
         cout << ip << "\n";
 
     return packet->source;
-
 }
