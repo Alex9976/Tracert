@@ -39,20 +39,29 @@ unsigned short checksum(unsigned short* addr, int count);
 
 unsigned int analyze(char* data, SOCKADDR_IN* adr);
 
-bool show_name = false;
+bool show_name = true;
 
 int main(int argc, char* argv[])
 {   
- /*   if (argc == 3 && strcmp(argv[2], "-n") == 0)
-        show_name = true;
+    bool init_adr = false;
+    char* ending_adr = 0;
+    if (argc == 3)
+    {
+        if (strcmp(argv[2], "-n") == 0)
+            show_name = true;
+        else
+            show_name = false;
+    }
+    else if (argc == 2)
+    {
+        ending_adr = argv[1];
+    }
     else
-        show_name = false;
-    
-    char ending_adr[] = argv[1];
-*/
-    
-    char ending_adr[] = "142.250.75.14";
-    char* local_adr;
+    {
+        init_adr = true;
+        ending_adr = (char*)malloc(255 * sizeof(char));
+        cin >> ending_adr;
+    }
 
     SOCKADDR_IN list_adr = { 0 };
     list_adr.sin_addr.S_un.S_addr = inet_addr(ending_adr);
@@ -93,14 +102,14 @@ int main(int argc, char* argv[])
     unsigned int control = list_adr.sin_addr.S_un.S_addr;
     SOCKADDR_IN buf_ = { 0 };
     int error_count = 0;
-    int error;
     ULONGLONG time_start, time_end, delta;
+    int error;
 
     cout << "Route to " << ending_adr << " with 30 hops\n";
     for (int i = 1; i <= 30; i++)
     {
-        cout.width(5);
-        cout << left << i;
+        cout.width(3);
+        cout << right << i;
         error_count = 0;
         for (int j = 1; j <= 3; j++)
         {
@@ -146,6 +155,9 @@ int main(int argc, char* argv[])
     delete[] Icmp;
     closesocket(listn);
     WSACleanup();
+
+    if (init_adr)
+        free(ending_adr);
 
     system("pause");
     return 0;
