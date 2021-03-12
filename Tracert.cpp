@@ -39,32 +39,46 @@ unsigned short checksum(unsigned short* addr, int count);
 
 unsigned int analyze(char* data, SOCKADDR_IN* adr);
 
-bool show_name = true;
+int get_addr(char* host_name);
+
+bool show_name = false;
+
+
 
 int main(int argc, char* argv[])
 {   
     bool init_adr = false;
     char* ending_adr = 0;
-    if (argc == 3)
-    {
-        if (strcmp(argv[2], "-n") == 0)
-            show_name = true;
-        else
-            show_name = false;
-    }
-    else if (argc == 2)
+    
+    if (argc >= 2)
     {
         ending_adr = argv[1];
+        if (argc == 3)
+        {
+            if (strcmp(argv[2], "-n") == 0)
+                show_name = true;
+            else
+                show_name = false;
+        }
     }
     else
     {
+        show_name = true;
         init_adr = true;
         ending_adr = (char*)malloc(255 * sizeof(char));
         cin >> ending_adr;
     }
 
+    WSADATA wsd = { 0 };
+    if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0)
+        return 1;
+
+    int coorrect_ip = get_addr(ending_adr);
+    if (coorrect_ip == -1)
+        return 1;
+
     SOCKADDR_IN list_adr = { 0 };
-    list_adr.sin_addr.S_un.S_addr = inet_addr(ending_adr);
+    list_adr.sin_addr.S_un.S_addr = coorrect_ip;
     list_adr.sin_family = AF_INET;
     list_adr.sin_port = 0;
 
@@ -73,9 +87,7 @@ int main(int argc, char* argv[])
     bnd.sin_family = AF_INET;
     bnd.sin_port = 0;
 
-    WSADATA wsd = { 0 };
-    if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0)
-        return 1;
+    
 
     SOCKET listn = WSASocket(AF_INET, SOCK_RAW, IPPROTO_ICMP, 0, 0, WSA_FLAG_OVERLAPPED);
     bind(listn, (sockaddr*)&bnd, sizeof(bnd));
@@ -200,4 +212,17 @@ unsigned int analyze(char* data, SOCKADDR_IN* adr)
         cout << ip << "\n";
 
     return packet->source;
+}
+
+
+int get_addr(char* host_name)
+{
+    int result = -1;
+
+    HOSTENT* host = gethostbyname(host_name);
+    if (host)
+        for (int i = 0; i < 4; i++)
+            ((BYTE*)&result)[i] = host->h_addr_list[0][i];
+
+    return result;
 }
