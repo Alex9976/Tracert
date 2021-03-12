@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <iostream>
 #include <sysinfoapi.h>
+#include <time.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -87,7 +88,7 @@ int main(int argc, char* argv[])
     bnd.sin_family = AF_INET;
     bnd.sin_port = 0;
 
-    
+    srand(time(NULL));
 
     SOCKET listn = WSASocket(AF_INET, SOCK_RAW, IPPROTO_ICMP, 0, 0, WSA_FLAG_OVERLAPPED);
     bind(listn, (sockaddr*)&bnd, sizeof(bnd));
@@ -96,7 +97,7 @@ int main(int argc, char* argv[])
     setsockopt(listn, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
     pac.i_type = 8;
     pac.i_code = 0;
-    pac.i_seq = 2;
+    pac.i_seq = rand();
     pac.i_checksum = 0;
     pac.i_id = (USHORT)GetCurrentProcessId();
     int size = sizeof(pac) + 32;
@@ -125,7 +126,10 @@ int main(int argc, char* argv[])
         error_count = 0;
         for (int j = 1; j <= 3; j++)
         {
-            
+            pac.i_seq++;
+            memcpy(Icmp, &pac, sizeof(pac));
+            Packet->i_checksum = checksum((USHORT*)Packet, size);
+
             setsockopt(listn, IPPROTO_IP, IP_TTL, (char*)&i, 4);
 
             time_start = GetTickCount64();
