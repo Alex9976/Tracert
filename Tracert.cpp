@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sysinfoapi.h>
 #include <time.h>
+#include <ctime>
+#include <chrono>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -115,9 +117,11 @@ int main(int argc, char* argv[])
     unsigned int control = list_adr.sin_addr.S_un.S_addr;
     SOCKADDR_IN buf_ = { 0 };
     int error_count = 0;
-    ULONGLONG time_start, time_end, delta;
+    ULONGLONG delta;
     int error;
 
+    using namespace std::chrono;
+    milliseconds time_start, time_end;
     cout << "Route to " << ending_adr << " with 30 hops\n";
     for (int i = 1; i <= 30; i++)
     {
@@ -132,11 +136,13 @@ int main(int argc, char* argv[])
 
             setsockopt(listn, IPPROTO_IP, IP_TTL, (char*)&i, 4);
 
-            time_start = GetTickCount64();
+            time_start = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
             sendto(listn, (char*)Packet, size, 0, (sockaddr*)&list_adr, sizeof(list_adr));
 
             error = recvfrom(listn, buf, 256, 0, (sockaddr*)&out_, &outlent);
-            time_end = GetTickCount64();
+            time_end = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+            
+            
 
             if (error == SOCKET_ERROR)
             {
@@ -151,7 +157,7 @@ int main(int argc, char* argv[])
             else
                 buf_ = out_;
             cout.width(10);
-            delta = time_end - time_start;
+            delta = time_end.count() - time_start.count();
             if (delta == 0)
                 cout << right << "< 1" << " ms";
             else
